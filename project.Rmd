@@ -1,0 +1,1251 @@
+---
+title: "Probability and Statistics (IE 6200) - Sec 7 - Group-6  Final Project Report on Data Analysis of Credit Card Defaulters"
+author: "Aviral Agrawal, Urjasvit Sinha and Bhavana Joshi"
+output: pdf_document
+fig_caption: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Objective:
+
+To find the correlation between the probability of default commited by credit card users with its associated factors which have been extracted from the database of an important bank in Taiwan with data of 6 months.
+Quantifying the effects of each associated factor like, credit card user's age, gender, marital status and permited limit balance, on the probability of default payments. The obtained results are then used for extracting meaningful information and patterns of the defaulters. This information can be used by the banks to identify their customers as credible or not credible clients.
+
+
+## Data Description:
+
+The raw data is obtained from UCI Machine Learning Repository. The data set contains 23 variables out of which  we’ve identified 6 main factors to run our analysis to predict the credibility of potential credit card customers.
+
+Refer to the table gievn below for detailed description of the attributes of the dataset and how the data has been modified to suit the analysis in R studio.
+
+
+|Attributes               | Values                                                                            |
+|-------------------------|-----------------------------------------------------------------------------------|
+|Sex                      | Gender (1 = male; 2 = female)                                                     |
+|Education                | Education level (1 = graduate school; 2 = university; 3 = high school; 4 = others)|
+|Marriage                 | Marital status (1 = married; 2 = single; 3 = others)                              |
+|Age                      | Age (in years)                                                                    |
+|Limit_Bal                | Limit of the credit card                                                          |
+|Pay_1 to Pay_6           | History of past payment                                                           |
+|Bill_amt_1 to Bill_amt_6 | Amount of bill statement                                                          |
+|Pay_amt_1 to Pay_amt_6   | Amount of previous payment                                                        |
+|defaulters               | Default payment (Yes = 1, No = 0)                                                 |
+
+
+The raw data has been filtered to remove outliers in order to obtain normal distribution for some of the variables. All the processing was performed in excel as well as R.
+
+
+
+## Approach:
+
+Following the traditional steps of data analysis, we started off with cleaning and filtering the data to get rid of unwanted noise or outliers and null values. To do so, we first studied each variable, calculated its statistics like mean, standard deviation and range, and plotted its distribution. We used the log() function in R in order to normalize our variables. We then categorized the data using different combinations of the variables to find correlation between the target variable- defaulters and rest of the variables. This not only gave an insight of the dataset but also helped in forming a basis for the hypothesis tests to be carried out on the dataset. Based on this, we came up with three hypothesis and carried out Test of Hypothesis. We also calculated confidence intervals.
+
+In addition to covering concepts learned in the lecture/lab, we utilized the 'rcompanion' package to plot the normal histogram for 'limit_bal' variable, 'corrplot' pakcage to plot the correlation plot of the dataset, 'rpart', 'rpart.plot', 'party' packages for plotting the decision tree.
+
+
+
+## Analysis:
+
+### Statistical analysis
+
+We carried out basic statistical analysis of the 'limit_bal' variable to find their measure of central tendency, variablity and symmetry as given below:  
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+library(rpart.plot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+LIMIT_BAL <- log(fltr_data$LIMIT_BAL)
+
+summary(LIMIT_BAL)
+```
+
+
+skewness:
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+library(rpart.plot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+LIMIT_BAL <- log(fltr_data$LIMIT_BAL)
+
+skewness <- skewness(LIMIT_BAL)
+skewness
+```
+
+
+kurtosis:
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+library(rpart.plot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+LIMIT_BAL <- log(fltr_data$LIMIT_BAL)
+
+kurtosis <- kurtosis(LIMIT_BAL)
+kurtosis
+```
+
+
+The 'limit_bal' variable was normalized by dividing by 100.
+We selected the required columns and categorized the data with different combinations. Then ,created a new table with total people in each category with their respective number of defaulters along with their probabilities as shown below:
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "Categorical data"}
+library(corrplot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+library(rpart)
+library(rpart.plot)
+library(party)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+fltr_data1 <- mutate(fltr_data, SEX=as.character(SEX), MARRIAGE=as.character(MARRIAGE))
+
+fltr_data2 <- dplyr::select(fltr_data1, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+fltr_data_n <- dplyr::select(fltr_data, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+defaulter_data <- dplyr::filter(fltr_data2, defaulters ==1)
+
+category_1 <- dplyr::filter(fltr_data2, SEX ==1)
+category_1 <- dplyr::filter(category_1, EDUCATION == 1 | EDUCATION ==2)
+category_1 <- dplyr::filter(category_1, MARRIAGE == 2 | MARRIAGE ==3)
+category_1D <- dplyr::filter(category_1, defaulters==1)
+
+category_2 <- dplyr::filter(fltr_data2, SEX ==2)
+category_2 <- dplyr::filter(category_2, EDUCATION == 1 | EDUCATION ==2)
+category_2 <- dplyr::filter(category_2, MARRIAGE == 2 | MARRIAGE ==3)
+category_2D <- dplyr::filter(category_2, defaulters==1)
+
+
+category_3 <- dplyr::filter(fltr_data2, SEX ==1)
+category_3 <- dplyr::filter(category_3, EDUCATION == 3 | EDUCATION ==4)
+category_3 <- dplyr::filter(category_3, MARRIAGE == 2 | MARRIAGE ==3)
+category_3D <- dplyr::filter(category_3, defaulters==1)
+
+category_4 <- dplyr::filter(fltr_data2, SEX ==2)
+category_4 <- dplyr::filter(category_4, EDUCATION == 3 | EDUCATION ==4)
+category_4 <- dplyr::filter(category_4, MARRIAGE == 2 | MARRIAGE ==3)
+category_4D <- dplyr::filter(category_4, defaulters==1)
+
+category_5 <- dplyr::filter(fltr_data2, SEX ==1)
+category_5 <- dplyr::filter(category_5, EDUCATION == 1 | EDUCATION ==2)
+category_5 <- dplyr::filter(category_5, MARRIAGE == 1)
+category_5D <- dplyr::filter(category_5, defaulters==1)
+
+category_6 <- dplyr::filter(fltr_data2, SEX ==2)
+category_6 <- dplyr::filter(category_6, EDUCATION == 1 | EDUCATION ==2)
+category_6 <- dplyr::filter(category_6, MARRIAGE == 1)
+category_6D <- dplyr::filter(category_6, defaulters==1)
+
+category_7 <- dplyr::filter(fltr_data2, SEX ==1)
+category_7 <- dplyr::filter(category_7, EDUCATION == 3 | EDUCATION ==4)
+category_7 <- dplyr::filter(category_7, MARRIAGE == 1)
+category_7D <- dplyr::filter(category_7, defaulters==1)
+
+category_8 <- dplyr::filter(fltr_data2, SEX ==2)
+category_8 <- dplyr::filter(category_8, EDUCATION == 3 | EDUCATION ==4)
+category_8 <- dplyr::filter(category_8, MARRIAGE == 1)
+category_8D <- dplyr::filter(category_8, defaulters==1)
+
+category_count <- c(nrow(category_1), nrow(category_2), nrow(category_3), nrow(category_4),nrow(category_5), nrow(category_6), nrow(category_7),nrow(category_8))
+category_count <- melt(category_count)
+
+category_defaulter_count <- c(nrow(category_1D), nrow(category_2D), nrow(category_3D), nrow(category_4D),nrow(category_5D), nrow(category_6D), nrow(category_7D),nrow(category_8D))
+category_defaulter_count <- melt(category_defaulter_count)
+
+colnames(category_count) <- c('Total')
+colnames(category_defaulter_count) <- c('defaulters')
+
+category <- c('category 1', 'category 2', 'category 3','category 4', 'category 5', 'category 6', 'category 7', 'category 8')
+
+category_count <- cbind( category, category_count, category_defaulter_count)
+category_count <- transform(category_count, Probabilty = defaulters /Total)
+category_count
+```
+
+\newpage
+
+### Visualization
+
+We then visualized all the data created and all the target variables.
+
+
+Histogram plot of 'limit_bal' variable before normalization was obtained as shown in Fig.1  
+The histogram represents the frequency of the individuals having specific credit limit balance per month.
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='asis', fig.cap = "Before normalization" }
+library(rpart.plot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+ggplot(fltr_data, aes(LIMIT_BAL)) +
+  geom_histogram(bins = 50, color = 'Black', fill = 'steelblue')
+
+```        
+
+\newpage
+
+Histogram plot of 'limit_bal' variable after normalization was obtained as shown in Fig.2  
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='asis', fig.cap = "After normalization"}
+library(rpart.plot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+LIMIT_BAL <- log(fltr_data$LIMIT_BAL)
+plotNormalHistogram(LIMIT_BAL, xlab = 'Limit Balance')
+
+```
+
+\newpage
+
+Barplot of the categorical data obtained is shown in Fig.3
+Here the bar plot is between the 8 categories (combination of gender, education & marriage status) and the limit balance. The plot is subdivided into total number of people falling in each category and the defaulters in them.
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "Categorical data"}
+library(corrplot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+library(rpart)
+library(rpart.plot)
+library(party)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+fltr_data1 <- mutate(fltr_data, SEX=as.character(SEX), MARRIAGE=as.character(MARRIAGE))
+
+fltr_data2 <- dplyr::select(fltr_data1, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+fltr_data_n <- dplyr::select(fltr_data, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+defaulter_data <- dplyr::filter(fltr_data2, defaulters ==1)
+
+category_1 <- dplyr::filter(fltr_data2, SEX ==1)
+category_1 <- dplyr::filter(category_1, EDUCATION == 1 | EDUCATION ==2)
+category_1 <- dplyr::filter(category_1, MARRIAGE == 2 | MARRIAGE ==3)
+category_1D <- dplyr::filter(category_1, defaulters==1)
+
+category_2 <- dplyr::filter(fltr_data2, SEX ==2)
+category_2 <- dplyr::filter(category_2, EDUCATION == 1 | EDUCATION ==2)
+category_2 <- dplyr::filter(category_2, MARRIAGE == 2 | MARRIAGE ==3)
+category_2D <- dplyr::filter(category_2, defaulters==1)
+
+
+category_3 <- dplyr::filter(fltr_data2, SEX ==1)
+category_3 <- dplyr::filter(category_3, EDUCATION == 3 | EDUCATION ==4)
+category_3 <- dplyr::filter(category_3, MARRIAGE == 2 | MARRIAGE ==3)
+category_3D <- dplyr::filter(category_3, defaulters==1)
+
+category_4 <- dplyr::filter(fltr_data2, SEX ==2)
+category_4 <- dplyr::filter(category_4, EDUCATION == 3 | EDUCATION ==4)
+category_4 <- dplyr::filter(category_4, MARRIAGE == 2 | MARRIAGE ==3)
+category_4D <- dplyr::filter(category_4, defaulters==1)
+
+category_5 <- dplyr::filter(fltr_data2, SEX ==1)
+category_5 <- dplyr::filter(category_5, EDUCATION == 1 | EDUCATION ==2)
+category_5 <- dplyr::filter(category_5, MARRIAGE == 1)
+category_5D <- dplyr::filter(category_5, defaulters==1)
+
+category_6 <- dplyr::filter(fltr_data2, SEX ==2)
+category_6 <- dplyr::filter(category_6, EDUCATION == 1 | EDUCATION ==2)
+category_6 <- dplyr::filter(category_6, MARRIAGE == 1)
+category_6D <- dplyr::filter(category_6, defaulters==1)
+
+category_7 <- dplyr::filter(fltr_data2, SEX ==1)
+category_7 <- dplyr::filter(category_7, EDUCATION == 3 | EDUCATION ==4)
+category_7 <- dplyr::filter(category_7, MARRIAGE == 1)
+category_7D <- dplyr::filter(category_7, defaulters==1)
+
+category_8 <- dplyr::filter(fltr_data2, SEX ==2)
+category_8 <- dplyr::filter(category_8, EDUCATION == 3 | EDUCATION ==4)
+category_8 <- dplyr::filter(category_8, MARRIAGE == 1)
+category_8D <- dplyr::filter(category_8, defaulters==1)
+
+category_count <- c(nrow(category_1), nrow(category_2), nrow(category_3), nrow(category_4),nrow(category_5), nrow(category_6), nrow(category_7),nrow(category_8))
+category_count <- melt(category_count)
+
+category_defaulter_count <- c(nrow(category_1D), nrow(category_2D), nrow(category_3D), nrow(category_4D),nrow(category_5D), nrow(category_6D), nrow(category_7D),nrow(category_8D))
+category_defaulter_count <- melt(category_defaulter_count)
+
+colnames(category_count) <- c('Total')
+colnames(category_defaulter_count) <- c('defaulters')
+
+category <- c('category 1', 'category 2', 'category 3','category 4', 'category 5', 'category 6', 'category 7', 'category 8')
+
+category_count <- cbind( category, category_count, category_defaulter_count)
+category_count <- transform(category_count, Probabilty = defaulters /Total)
+
+clus.col1 <- do.call(rbind, category_count)
+barplot(clus.col1 ,beside = TRUE,
+        main="Grouped Column Chart" ,
+        legend.text = c("Defaulters", 'Total'),
+        names.arg = category,
+        col = c(' steel blue', 'black'))
+```
+
+\newpage
+
+Histogram depicting the probability of each category was obtained as shown in Fig.4.
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "Probability of each category"}
+library(corrplot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+library(rpart)
+library(rpart.plot)
+library(party)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+fltr_data1 <- mutate(fltr_data, SEX=as.character(SEX), MARRIAGE=as.character(MARRIAGE))
+
+fltr_data2 <- dplyr::select(fltr_data1, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+fltr_data_n <- dplyr::select(fltr_data, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+defaulter_data <- dplyr::filter(fltr_data2, defaulters ==1)
+
+category_1 <- dplyr::filter(fltr_data2, SEX ==1)
+category_1 <- dplyr::filter(category_1, EDUCATION == 1 | EDUCATION ==2)
+category_1 <- dplyr::filter(category_1, MARRIAGE == 2 | MARRIAGE ==3)
+category_1D <- dplyr::filter(category_1, defaulters==1)
+
+category_2 <- dplyr::filter(fltr_data2, SEX ==2)
+category_2 <- dplyr::filter(category_2, EDUCATION == 1 | EDUCATION ==2)
+category_2 <- dplyr::filter(category_2, MARRIAGE == 2 | MARRIAGE ==3)
+category_2D <- dplyr::filter(category_2, defaulters==1)
+
+
+category_3 <- dplyr::filter(fltr_data2, SEX ==1)
+category_3 <- dplyr::filter(category_3, EDUCATION == 3 | EDUCATION ==4)
+category_3 <- dplyr::filter(category_3, MARRIAGE == 2 | MARRIAGE ==3)
+category_3D <- dplyr::filter(category_3, defaulters==1)
+
+category_4 <- dplyr::filter(fltr_data2, SEX ==2)
+category_4 <- dplyr::filter(category_4, EDUCATION == 3 | EDUCATION ==4)
+category_4 <- dplyr::filter(category_4, MARRIAGE == 2 | MARRIAGE ==3)
+category_4D <- dplyr::filter(category_4, defaulters==1)
+
+category_5 <- dplyr::filter(fltr_data2, SEX ==1)
+category_5 <- dplyr::filter(category_5, EDUCATION == 1 | EDUCATION ==2)
+category_5 <- dplyr::filter(category_5, MARRIAGE == 1)
+category_5D <- dplyr::filter(category_5, defaulters==1)
+
+category_6 <- dplyr::filter(fltr_data2, SEX ==2)
+category_6 <- dplyr::filter(category_6, EDUCATION == 1 | EDUCATION ==2)
+category_6 <- dplyr::filter(category_6, MARRIAGE == 1)
+category_6D <- dplyr::filter(category_6, defaulters==1)
+
+category_7 <- dplyr::filter(fltr_data2, SEX ==1)
+category_7 <- dplyr::filter(category_7, EDUCATION == 3 | EDUCATION ==4)
+category_7 <- dplyr::filter(category_7, MARRIAGE == 1)
+category_7D <- dplyr::filter(category_7, defaulters==1)
+
+category_8 <- dplyr::filter(fltr_data2, SEX ==2)
+category_8 <- dplyr::filter(category_8, EDUCATION == 3 | EDUCATION ==4)
+category_8 <- dplyr::filter(category_8, MARRIAGE == 1)
+category_8D <- dplyr::filter(category_8, defaulters==1)
+
+category_count <- c(nrow(category_1), nrow(category_2), nrow(category_3), nrow(category_4),nrow(category_5), nrow(category_6), nrow(category_7),nrow(category_8))
+category_count <- melt(category_count)
+
+category_defaulter_count <- c(nrow(category_1D), nrow(category_2D), nrow(category_3D), nrow(category_4D),nrow(category_5D), nrow(category_6D), nrow(category_7D),nrow(category_8D))
+category_defaulter_count <- melt(category_defaulter_count)
+
+colnames(category_count) <- c('Total')
+colnames(category_defaulter_count) <- c('defaulters')
+
+category <- c('category 1', 'category 2', 'category 3','category 4', 'category 5', 'category 6', 'category 7', 'category 8')
+
+category_count <- cbind( category, category_count, category_defaulter_count)
+category_count <- transform(category_count, Probabilty = defaulters /Total)
+
+Hist_cat_def <- ggplot(data = category_count) + 
+  geom_col(aes(x =category, y= Probabilty), fill= 'black')
+Hist_cat_def
+```
+
+
+\newpage
+Cullen and Frey graph of 'limit_bal' variable was obtained as shown in Fig.5
+Here the observation is plotted against the kurtosis and square of skewness where all the theoretical distributions are present. The two closest theoretical distributions to the observation point are chosen and goodness of fit test is performed.
+
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "Cullen and Frey graph of 'limit_bal' variable"}
+library(corrplot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+library(rpart)
+library(rpart.plot)
+library(party)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+fltr_data1 <- mutate(fltr_data, SEX=as.character(SEX), MARRIAGE=as.character(MARRIAGE))
+
+LIMIT_BAL <- log(fltr_data$LIMIT_BAL)
+
+descdist(LIMIT_BAL)
+```
+\newpage
+
+We performed the goodness of fit test on the 'limit_bal' variable and plotted the density, cdf, qq and pp plots. The four graphs which are plotted are used to test the goodness of the distribution like how fair the dataset is fitted. Refer to the results below:
+
+
+
+Density plot is shown in Fig.6
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "Density plot of 'limit_bal'"}
+library(corrplot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+library(rpart)
+library(rpart.plot)
+library(party)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+plot.legend <- c("norm")
+fit_ln <- fitdist(LIMIT_BAL, "norm")
+summary(fit_ln)
+
+denscomp(list(fit_ln), legendtext = plot.legend, xlab = 'Limit Balance', xlegend = 'topleft')
+
+```
+
+\newpage
+
+CDF plot is shown in Fig.7
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "CDF plot of 'limit_bal'"}
+library(corrplot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+library(rpart)
+library(rpart.plot)
+library(party)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+plot.legend <- c("norm")
+fit_ln <- fitdist(LIMIT_BAL, "norm")
+summary(fit_ln)
+
+cdfcomp (list(fit_ln), legendtext = plot.legend, xlab = 'Limit Balance')
+```
+
+\newpage
+
+QQ-plot is shown in Fig.8
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "QQ plot of 'limit_bal'"}
+library(corrplot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+library(rpart)
+library(rpart.plot)
+library(party)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+plot.legend <- c("norm")
+fit_ln <- fitdist(LIMIT_BAL, "norm")
+summary(fit_ln)
+
+qqnorm(fltr_data$LIMIT_BAL)
+```
+
+\newpage
+
+PP-plot is shown in Fig.9
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "PP plot of 'limit_bal'"}
+library(corrplot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+library(rpart)
+library(rpart.plot)
+library(party)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+plot.legend <- c("norm")
+fit_ln <- fitdist(LIMIT_BAL, "norm")
+summary(fit_ln)
+
+m <- mean(fltr_data$LIMIT_BAL)
+s <- sd(fltr_data$LIMIT_BAL)
+n <- nrow(fltr_data)
+p <- (1 : n) / n - 0.5 / n
+ggplot(fltr_data) + geom_point(aes(x = p, y = sort(pnorm(LIMIT_BAL, m, s))))
+
+```
+
+\newpage
+
+Scatter plot of the 'limit_bal' variable was obtained as shown in Fig.10. The three variable scatterplot shows the relation between age, limit balance and marital status of the individual. The plot shows that married individuals aged between 20 to 35 and limit balance lesser than 200000 tend to default more as compared to others in this group.
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "Scatterplot(Limit bal, age and marriage)"}
+library(corrplot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+library(rpart)
+library(rpart.plot)
+library(party)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+fltr_data1 <- mutate(fltr_data, SEX=as.character(SEX), MARRIAGE=as.character(MARRIAGE))
+
+LIMIT_BAL <- log(fltr_data$LIMIT_BAL)
+
+
+ggplot(data = defaulter_data) + 
+  geom_point(mapping = aes(x = AGE, y = LIMIT_BAL, color = MARRIAGE)) + xlim(20,80) + geom_vline(xintercept = 35) + geom_hline(yintercept = 2000)
+
+```
+
+\newpage
+
+Scatter plot of the 'limit_bal' variable was obtained as shown in Fig.11. This scatterplot is between limit balance and age with sex as third variable. It shows that men aged between 20 to 30 and with limit balance lesser than 200000 have more tendency of doing default as compared to others.
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "Scatterplot(Limit bal, age and sex)"}
+library(corrplot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+library(rpart)
+library(rpart.plot)
+library(party)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+fltr_data1 <- mutate(fltr_data, SEX=as.character(SEX), MARRIAGE=as.character(MARRIAGE))
+
+LIMIT_BAL <- log(fltr_data$LIMIT_BAL)
+
+
+ggplot(data = defaulter_data) + 
+  geom_point(mapping = aes(x = AGE, y = LIMIT_BAL, color = SEX)) + xlim(20,80) + geom_vline(xintercept = 30) + geom_hline(yintercept = 2000)
+
+```
+
+\newpage
+
+Boxplot comparing male defaulters who are highly educated with the male defaulters with less education is shown in Fig.12
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "Boxplot comparing category 1 and 3"}
+library(corrplot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+library(rpart)
+library(rpart.plot)
+library(party)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+fltr_data1 <- mutate(fltr_data, SEX=as.character(SEX), MARRIAGE=as.character(MARRIAGE))
+
+fltr_data2 <- dplyr::select(fltr_data1, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+fltr_data_n <- dplyr::select(fltr_data, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+defaulter_data <- dplyr::filter(fltr_data2, defaulters ==1)
+
+category_1 <- dplyr::filter(fltr_data2, SEX ==1)
+category_1 <- dplyr::filter(category_1, EDUCATION == 1 | EDUCATION ==2)
+category_1 <- dplyr::filter(category_1, MARRIAGE == 2 | MARRIAGE ==3)
+category_1D <- dplyr::filter(category_1, defaulters==1)
+
+
+category_3 <- dplyr::filter(fltr_data2, SEX ==1)
+category_3 <- dplyr::filter(category_3, EDUCATION == 3 | EDUCATION ==4)
+category_3 <- dplyr::filter(category_3, MARRIAGE == 2 | MARRIAGE ==3)
+category_3D <- dplyr::filter(category_3, defaulters==1)
+
+par(mfrow=c(1,1))
+boxplot(category_1$LIMIT_BAL,category_3$LIMIT_BAL,
+        main="multiple box plots for comparision",
+        names=c("Category 1","Category 3"),
+        xlab="",ylab="",col="orange",border = "brown",notch=TRUE,horizontal = TRUE)
+
+```
+
+\newpage
+
+Correlation plot of the entire dataset is shown in Fig.13. The correlation plot shows the correlation of each column. It uses correlation matrix for plotting. The blue circles represent positive correlation whereas the red ones represent negative correlation.
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "Correlation plot"}
+library(corrplot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+library(rpart)
+library(rpart.plot)
+library(party)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+M <- cor(fltr_data)
+head(round(M,2))
+corrplot(M,method ="circle")
+```
+
+\newpage
+
+
+
+
+### Hypothesis Testing
+
+We tested for three different hypothesis stated as follows:
+
+#### Hypothesis 1
+
+We are going to test if unmarried men with higher level of education default more.
+
+Hypothesis:  
+
+H0: p1 = p0
+
+H1: p1 !=  p0
+
+
+Population default percentage, p0:
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+
+library(rpart.plot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+
+LIMIT_BAL <- log(fltr_data$LIMIT_BAL)
+
+fltr_data2 <- dplyr::select(fltr_data, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+
+category_1 <- dplyr::filter(fltr_data2, SEX ==1)
+category_1 <- dplyr::filter(category_1, EDUCATION == 1 | EDUCATION ==2)
+category_1 <- dplyr::filter(category_1, MARRIAGE == 2 | MARRIAGE ==3)
+category_1D <- dplyr::filter(category_1, defaulters==1)
+p0 <- nrow(category_1D)/nrow(fltr_data2)
+p0
+```                       
+
+sample percentage, p1:
+ 
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+
+library(rpart.plot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+
+LIMIT_BAL <- log(fltr_data$LIMIT_BAL)
+
+fltr_data2 <- dplyr::select(fltr_data, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+sample1_data <- sample_n (fltr_data2, 5000)
+sample1 <- dplyr::filter(sample1_data, SEX ==1)
+sample1 <- dplyr::filter(sample1, EDUCATION == 1 | EDUCATION ==2)
+sample1 <- dplyr::filter(sample1, MARRIAGE == 2 | MARRIAGE ==3)
+sample1 <- dplyr::filter(sample1, defaulters==1)
+p1 <- nrow(sample1)/nrow(sample1_data)
+p1
+```    
+
+sample size, n:
+ 
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+
+library(rpart.plot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+
+LIMIT_BAL <- log(fltr_data$LIMIT_BAL)
+
+fltr_data2 <- dplyr::select(fltr_data, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+sample1_data <- sample_n (fltr_data2, 5000)
+sample1 <- dplyr::filter(sample1_data, SEX ==1)
+sample1 <- dplyr::filter(sample1, EDUCATION == 1 | EDUCATION ==2)
+sample1 <- dplyr::filter(sample1, MARRIAGE == 2 | MARRIAGE ==3)
+sample1 <- dplyr::filter(sample1, defaulters==1)
+n <- nrow(sample1_data)
+n
+```  
+
+Since n is greater than 30, we applied z test.
+
+We consider 95% confidence interval. Hence, its z value is 1.96
+
+Z score:
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+
+library(rpart.plot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+
+LIMIT_BAL <- log(fltr_data$LIMIT_BAL)
+
+fltr_data2 <- dplyr::select(fltr_data, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+
+category_1 <- dplyr::filter(fltr_data2, SEX ==1)
+category_1 <- dplyr::filter(category_1, EDUCATION == 1 | EDUCATION ==2)
+category_1 <- dplyr::filter(category_1, MARRIAGE == 2 | MARRIAGE ==3)
+category_1D <- dplyr::filter(category_1, defaulters==1)
+p0 <- nrow(category_1D)/nrow(fltr_data2)
+sample1_data <- sample_n (fltr_data2, 5000)
+sample1 <- dplyr::filter(sample1_data, SEX ==1)
+sample1 <- dplyr::filter(sample1, EDUCATION == 1 | EDUCATION ==2)
+sample1 <- dplyr::filter(sample1, MARRIAGE == 2 | MARRIAGE ==3)
+sample1 <- dplyr::filter(sample1, defaulters==1)
+p1 <- nrow(sample1)/nrow(sample1_data)
+n <- nrow(sample1_data)
+z.test <- function(p0, p1, n)
+{
+  z= ((p1-p0)/sqrt(p1*(1-p1)/n))
+  return(z)
+}
+z.test(p0,p1,n)
+```
+
+
+The z score does not fall in the rejection region, hence we fail to reject the null hypothesis. So we conclude that unmarried men with higher education level default more.
+
+
+#### Hypothesis 2
+
+We are going to compare the limit balances given for male and female customers and test for who is given a greater limit balance. We shall use two sample left tailed test.
+
+Hypothesis:
+
+H0: mu1 - mu2 >= 0
+
+H1: mu1 - mu2 < 0
+
+
+Male sample size: 2000
+
+Male sample mean: 1599.95
+
+Male sample standard deviation: 1282.129
+
+Female population mean: mu1
+
+Female sample size: 3000
+
+Female sample mean: 1510.988
+
+Female sample standard deviation: 1260.555
+
+Female population mean: mu2
+
+
+We consider 95% confidence interval. Hence, its z value is 1.96
+
+Z score: 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+library(rpart.plot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+
+LIMIT_BAL <- log(fltr_data$LIMIT_BAL)
+
+fltr_data2 <- dplyr::select(fltr_data, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+sample_m <- sample_n(fltr_data2, 2000)
+sample_f <- sample_n(fltr_data2,3000)
+mean_sample_m <- mean(sample_m[sample_m$SEX==1, ]$LIMIT_BAL)
+mean_sample_f <- mean(sample_f[sample_f$SEX==2, ]$LIMIT_BAL)
+sd_m <- sd(fltr_data[fltr_data$SEX==1, ]$LIMIT_BAL)
+sd_f <- sd(fltr_data[fltr_data$SEX==2, ]$LIMIT_BAL)
+
+ztest_means <- function(x1, x2, sd_m, sd_f)
+{
+  z_m = (x1-x2)/sqrt(((sd_m^2)/2000)+((sd_f^2)/3000))
+  return(z_m)
+}
+ztest_means(mean_sample_m, mean_sample_f, sd_m, sd_f)
+```
+
+
+The z score does not fall in the rejection region, hence we fail to reject the null hypothesis. So we conclude that male customers are given greater limit balance as compared to female customers.
+
+
+### Constructing confidence interval
+
+We computed a 95% confidence interval for the difference between the proportions of male defaulters who are married and have higher level of education from two samples.
+
+We first calculated the error and then found the lower and upper limits of the confidence interval.
+
+The 95% confidence interval obtained is :
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+
+library(rpart.plot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+
+
+category_5 <- dplyr::filter(fltr_data2, SEX ==1)
+category_5 <- dplyr::filter(category_5, EDUCATION == 1 | EDUCATION ==2)
+category_5 <- dplyr::filter(category_5, MARRIAGE == 1)
+category_5D <- dplyr::filter(category_5, defaulters==1)
+
+sample_test1_a <- sample_n(category_5,1000)
+sample_test1_ad <- dplyr::filter(sample_test1_a, defaulters==1)
+prob_1a <- (nrow(sample_test1_ad)/nrow(sample_test1_a))
+
+
+sample_test1_b <- sample_n(category_5, 1300)
+sample_test1_bd <- dplyr::filter(sample_test1_b, defaulters==1)
+prob_1b <- (nrow(sample_test1_bd)/nrow(sample_test1_b))
+
+error <- qnorm(0.975)*sqrt( (  (prob_1a*(1-prob_1a))/1000) + (  (prob_1b*(1-prob_1b))/1300))
+
+left <- round((prob_1a - prob_1b - error), 4)
+right <- round((prob_1a - prob_1b + error), 4)
+
+print (c(left,right))
+```
+
+
+\newpage
+
+### Advanced Analytics using Decision Tree
+
+Decision tree is a type of supervised learning algorithm that can be used in both regression and classification problems. It works for both categorical and continuous input and output variables.
+
+In our analysis, we have used classification trees to identify the trend of the credit card defaulters based on their alloted limit balance, age, sex and marital status.
+
+
+Here is the plot of the decision tree shown in Fig.14. The decision tree given above classifies the defaulters by partitioning the columns (age, sex, limit balance, education) using set of rules. the classification provides the best split using the specified columns.
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.cap = "Decision Tree plot"}
+library(rpart.plot)
+library(rcompanion)
+library(dbplyr)
+library(party)
+library(desc)
+library(dplyr)
+library(e1071)
+library(fitdistrplus)
+library(ggplot2)
+library(plyr)
+library(prob)
+library(reshape2)
+library(tidyverse)
+library(tidyselect)
+setwd("~/Documents/Prob Stats/project")
+
+fltr_data <- read.csv("final_data.csv")
+
+fltr_data <- mutate(fltr_data, LIMIT_BAL=(LIMIT_BAL)/100)
+fltr_data1 <- mutate(fltr_data, SEX=as.character(SEX), MARRIAGE=as.character(MARRIAGE))
+
+fltr_data2 <- dplyr::select(fltr_data1, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+fltr_data_n <- dplyr::select(fltr_data, SEX, AGE, EDUCATION, MARRIAGE, LIMIT_BAL, defaulters)
+
+fltr_data_n$Def <- factor(fltr_data_n$defaulters)
+
+set.seed(123)
+pd <- sample(2,nrow(fltr_data_n),replace = TRUE,prob = c(0.8,0.2))
+train <- fltr_data_n[pd==1,]
+validate <- fltr_data_n[pd==2,]
+
+tree <- ctree(Def~AGE+SEX+MARRIAGE+LIMIT_BAL,data=train,controls = ctree_control(mincriterion = 0.9,minsplit = 100))
+plot(tree)
+```
+
+
+\newpage
+
+1. Misclassification error in training data:
+
+The error table for training data was obtained as follows:
+
+|  |  0    |   1  |
+|--|-----  |------|        
+|0 | 13943 | 4247 |
+|1 |  0    |  0   |
+
+Hence the misclassification error is 0.2334799 i.e. the predictions made differ from the reality by 23.34%
+
+
+
+
+
+
+2. Misclassification error in validation data:
+
+The error table for validation data was obtained as follows:
+
+
+|testpred  |  0     |  1   |
+|----------|--------|------|
+|0         |  3481  | 1017 |
+|1         |  0     |  0   |
+
+Hence the misclassification error is 0.2261005 i.e the predictions made differ from the reality by 22.61%
+
